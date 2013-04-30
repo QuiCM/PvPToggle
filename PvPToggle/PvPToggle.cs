@@ -17,6 +17,14 @@ namespace PvPToggle
     [APIVersion(1, 12)]
     public class PvPToggle : TerrariaPlugin
     {
+        public static List<Player> PvPplayer = new List<Player>();
+        public static string PvPType { get; set; }
+        public static TSPlayer playerv3 { get; set; }
+        public static TSPlayer player { get; set; }
+        public static string playerv4 { get; set; }
+        public static Player playerv2 { get; set; }
+        public static int PvPFOn { get; set; }
+        public static int PvPFOff { get; set; }
 
         public override Version Version
         {
@@ -38,14 +46,20 @@ namespace PvPToggle
 
         public override void Initialize()
         {
+            GameHooks.Update += OnUpdate;
+            NetHooks.GreetPlayer += OnGreetPlayer;
             GameHooks.Initialize += OnInitialize;
+            ServerHooks.Leave += OnLeave;
         }
 
         protected override void Dispose(bool disposing)
         {
             if (disposing)
             {
+                GameHooks.Update -= OnUpdate;
+                NetHooks.GreetPlayer -= OnGreetPlayer;
                 GameHooks.Initialize -= OnInitialize;
+                ServerHooks.Leave -= OnLeave;
             }
             base.Dispose(disposing);
         }
@@ -59,39 +73,124 @@ namespace PvPToggle
         public void OnInitialize()
         {
             Commands.ChatCommands.Add(new Command("pvpswitch", TogglePvP, "pvp", "togglepvp"));
+            Commands.ChatCommands.Add(new Command("pvpforce", ForceToggle, "forcepvp", "fpvp"));
+            Commands.ChatCommands.Add(new Command("test", Test, "checking"));
         }
 
+        public void OnGreetPlayer(int who, HandledEventArgs e)
+        {
+                lock (PvPplayer)
+                    PvPplayer.Add(new Player(who));
+        }
+
+        public void OnUpdate()
+        {
+            lock (PvPToggle.PvPplayer)
+            {
+                int On = 0;
+                int Off = 0;
+
+                foreach (Player player in PvPToggle.PvPplayer)
+                {
+                    if (player.PvPType == "")
+                    {
+                        Off++;
+                        PvPFOff = Off;
+                    }
+                    else if (player.PvPType == "forceon")
+                    {
+                        On++;
+                        PvPFOn = On;
+                        if (Main.player[player.Index].hostile == false)
+                        {
+                            Main.player[player.Index].hostile = true;
+                            NetMessage.SendData((int)PacketTypes.TogglePvp, -1, -1, "", player.Index, 0f, 0f,
+                                            0f);
+                            player.TSPlayer.SendWarningMessage("Your PvP has been forced on, don't try and turn it off!");
+                        }
+                    }
+                }
+            }
+        }
+
+        public void OnLeave(int ply)
+        {
+            {
+                lock (PvPplayer)
+                {
+                    PvPplayer.RemoveAll(plr => plr.Index == ply);
+                }
+            }
+        }
+
+
+        #region TogglePvP
         public void TogglePvP(CommandArgs args)
         {
-            var ply = TShock.Utils.FindPlayer(args.Parameters[0]);
-            var player = ply[0];
-
+            var playerv2 = Tools.GetPlayerByIndex(args.Player.Index);
 
             if (args.Parameters.Count > 1)
             {
                 args.Player.SendErrorMessage("You used too many parameters! Try /pvp \"player's name\"!");
             }
-            if (args.Parameters.Count == 0)
+            else if (args.Parameters.Count < 1)
             {
-                args.Player.SendErrorMessage("You need to include a player's name!");
-            }
-            if (args.Parameters.Count < 1)
-            {
-                args.Player.SendErrorMessage("You didn't use enough parameters! Try /pvp \"player's name\"!");
+                args.Player.SendErrorMessage("You don't have enough parameters! Try /pvp \"player's name\"!");
+                return;
             }
 
-            else if (args.Parameters.Count == 1)
-            {
-                if (ply.Count == 0)
-                {
-                    args.Player.SendErrorMessage("No players matched that name!");
-                }
-                else if (ply.Count > 1)
-                {
-                    args.Player.SendErrorMessage("More than one player has that name!");
-                }
+            string plStr = String.Join(" ", args.Parameters);
 
-                else if (args.Parameters.Count == 1 && ply.Count == 1)
+            var ply = TShock.Utils.FindPlayer(plStr);
+            if ((plStr != "*" || plStr != "all") && ply.Count < 1)
+            {
+                args.Player.SendErrorMessage("No players matched that name!");
+            }
+            else if ((plStr != "*" || plStr != "*") && ply.Count > 1)
+            {
+                args.Player.SendErrorMessage("More than one player has that name!");
+            }
+
+            //if (plStr == "all" || plStr == "*")
+            //{
+            //    foreach (Player pl in PvPToggle.PvPplayer)
+            //    {
+            //        Main.player[pl.Index].hostile = true;
+            //        NetMessage.SendData((int)PacketTypes.TogglePvp, -1, -1, "", player.Index, 0f, 0f,
+            //                            0f);
+            //    }
+            ////for (int i = 0; i < Main.maxPlayers; i++)
+            ////{
+            ////    Main.player[i].hostile = true;
+            ////    NetMessage.SendData((int)PacketTypes.TogglePvp, -1, -1, "", player.Index, 0f, 0f,
+            ////                        0f);
+            ////}
+            //    TSPlayer.All.SendInfoMessage(string.Format("{0} has turned on everyone's PvP!", args.Player.Name));
+            //}
+            //else if (plStr == "alloff" || plStr == "*off")
+            //{
+            //    //for (int i = 0; i < Main.maxPlayers; i++)
+            //    //{
+            //    //    Main.player[i].hostile = false;
+            //    //    NetMessage.SendData((int)PacketTypes.TogglePvp, -1, -1, "", player.Index, 0f, 0f,
+            //    //                        0f);
+            //    //}
+            //    foreach (Player pl in PvPToggle.PvPplayer)
+            //    {
+            //            pl.PvPType = "";
+            //        //Main.player[pl.Index].hostile = false;
+            //        //NetMessage.SendData((int)PacketTypes.TogglePvp, -1, -1, "", player.Index, 0f, 0f,
+            //        //                    0f);
+            //    }
+            //    TSPlayer.All.SendInfoMessage(string.Format("{0} has stopped forcing your PvP on. You can now turn it off", args.Player.Name));
+            //    return;
+            //}
+
+            else
+            {
+                var player = ply[0];
+
+                if (args.Parameters.Count == 1 && ply.Count == 1)
                 {
                     if (!Main.player[player.Index].hostile)
                     {
@@ -100,6 +199,7 @@ namespace PvPToggle
                                             0f);
                         args.Player.SendInfoMessage(string.Format("You have turned {0}'s PvP on!", player.Name));
                         player.SendInfoMessage(string.Format("{0} has turned your PvP on!", args.Player.Name));
+
                     }
                     else if (Main.player[player.Index].hostile)
                     {
@@ -111,6 +211,152 @@ namespace PvPToggle
                     }
                 }
             }
+            
+        }
+
+        #endregion
+
+        #region ForceToggle
+        public void ForceToggle(CommandArgs args)
+        {
+            if (args.Parameters.Count > 1)
+            {
+                args.Player.SendErrorMessage("Incorrect syntax. Use /fpvp \"player's name\" or *");
+                return;
+            }
+            else if (args.Parameters.Count < 1)
+            {
+                args.Player.SendErrorMessage("Incorrect syntax. Use /fpvp \"player's name\" or *");
+                return;
+            }
+
+            string plStr = String.Join(" ", args.Parameters);
+
+            var players = TShock.Utils.FindPlayer(plStr);
+            if (players.Count == 0 && ((plStr != "*") && (plStr != "all") && (plStr != "*off") && (plStr != "alloff")))
+            {
+                args.Player.SendErrorMessage("No players matched that name");
+                return;
+            }
+            else if (players.Count > 1
+                && (plStr != "*" && (plStr != "all")))
+            {
+                args.Player.SendErrorMessage("More than one player matched that name");
+            }
+
+            if (plStr == "*" || plStr == "all")
+            {
+                foreach (Player pl in PvPToggle.PvPplayer)
+                {
+                    pl.PvPType = "forceon";
+                }
+
+                //for (int i = 0; i < Main.maxPlayers; i++)
+                //{
+                //    Main.player[i].hostile = true;
+                //    NetMessage.SendData((int)PacketTypes.TogglePvp, -1, -1, "", player.Index, 0f, 0f, 0f);
+                //}
+                TSPlayer.All.SendInfoMessage(string.Format("{0} has forced on everyone's PvP", args.Player.Name));
+                //PvPType = "forced";
+                return;
+            }
+            else if (plStr == "*off" || plStr == "alloff")
+            {
+                foreach (Player pl in PvPToggle.PvPplayer)
+                {
+                    pl.PvPType = "";
+                }
+                TSPlayer.All.SendInfoMessage(string.Format("{0} has stopped forcing everyone's PvP on. It can now be turned off", args.Player.Name));
+            }
+
+            else
+            {
+                if (args.Parameters.Count == 1 && players.Count == 1)
+                {
+                    var plr = players[0];
+
+                    playerv2 = Tools.GetPlayerByIndex(players[0].Index);
+                    playerv3 = players[0];
+                    playerv4 = players[0].Name;
+
+                    if (playerv2.PvPType == "")
+                    {
+                        playerv2.PvPType = "forceon";
+                        Main.player[plr.Index].hostile = true;
+                        NetMessage.SendData((int)PacketTypes.TogglePvp, -1, -1, "", plr.Index, 0f, 0f, 0f);
+                        plr.SendInfoMessage(string.Format("{0} has forced your PvP on!", args.Player.Name));
+                        args.Player.SendInfoMessage(string.Format("You have forced {0}'s PvP on!", playerv4));
+                    }
+
+
+                    else if (playerv2.PvPType == "forceon")
+                    {
+                        playerv2.PvPType = "";
+                        Main.player[plr.Index].hostile = false;
+                        NetMessage.SendData((int)PacketTypes.TogglePvp, -1, -1, "", plr.Index, 0f, 0f, 0f);
+                        plr.SendInfoMessage(string.Format("{0} has turned your PvP off!", args.Player.Name));
+                        args.Player.SendInfoMessage(string.Format("You have turned {0}'s PvP off!", playerv4));
+
+                    }
+                }
+            }
+
+
+            //if (plStr == "*" || plStr == "all")
+            //{
+            //    for (int i = 0; i < Main.maxPlayers; i++)
+            //    {
+            //        Main.player[i].hostile = true;
+            //        NetMessage.SendData((int)PacketTypes.TogglePvp, -1, -1, "", player.Index, 0f, 0f, 0f);
+            //    }
+            //    TSPlayer.All.SendInfoMessage(string.Format("{0} has forced on everyone's PvP", args.Player.Name));
+            //    PvPType = "forced";
+            //    return;
+            //}
+        }
+#endregion
+
+        #region Test
+        public void Test(CommandArgs args)
+        {
+            var ply = TShock.Utils.FindPlayer(args.Parameters[0]);
+            var player = ply[0];
+            var plyr = Tools.GetPlayerByIndex(ply[0].Index);
+
+
+            if (args.Parameters.Count == 0)
+            {
+                args.Player.SendErrorMessage("Not enough parameters in command");
+            }
+            else
+            {
+                if (ply.Count > 1 || ply.Count < 1)
+                {
+                    args.Player.SendErrorMessage("More than one, or no players matched that name.");
+                }
+                else
+                {
+                    args.Player.SendInfoMessage(string.Format("{0} has PvP type {1}", player.Name, playerv2.PvPType));
+                    args.Player.SendInfoMessage(string.Format("The current server-wide PvP type is {0}", PvPType));
+                    args.Player.SendInfoMessage(string.Format("Number of people not forced on: {0}", PvPFOff));
+                    args.Player.SendInfoMessage(string.Format("Number of players forced on: {0}", PvPFOn));
+                }
+            }
+        }
+    }
+        #endregion
+    
+
+    public class Tools
+    {
+        public static Player GetPlayerByIndex(int index)
+        {
+            foreach (Player player in PvPToggle.PvPplayer)
+            {
+                if (player.Index == index)
+                    return player;
+            }
+            return new Player(-1);
         }
     }
 }
