@@ -74,13 +74,12 @@ namespace PvPToggle
         {
             Commands.ChatCommands.Add(new Command("pvpswitch", TogglePvP, "pvp", "togglepvp"));
             Commands.ChatCommands.Add(new Command("pvpforce", ForceToggle, "forcepvp", "fpvp"));
-            Commands.ChatCommands.Add(new Command("test", Test, "checking"));
         }
 
         public void OnGreetPlayer(int who, HandledEventArgs e)
         {
-                lock (PvPplayer)
-                    PvPplayer.Add(new Player(who));
+            lock (PvPplayer)
+                PvPplayer.Add(new Player(who));
         }
 
         public void OnUpdate()
@@ -142,49 +141,14 @@ namespace PvPToggle
             string plStr = String.Join(" ", args.Parameters);
 
             var ply = TShock.Utils.FindPlayer(plStr);
-            if ((plStr != "*" || plStr != "all") && ply.Count < 1)
+            if (ply.Count < 1)
             {
                 args.Player.SendErrorMessage("No players matched that name!");
             }
-            else if ((plStr != "*" || plStr != "*") && ply.Count > 1)
+            else if (ply.Count > 1)
             {
                 args.Player.SendErrorMessage("More than one player has that name!");
             }
-
-            //if (plStr == "all" || plStr == "*")
-            //{
-            //    foreach (Player pl in PvPToggle.PvPplayer)
-            //    {
-            //        Main.player[pl.Index].hostile = true;
-            //        NetMessage.SendData((int)PacketTypes.TogglePvp, -1, -1, "", player.Index, 0f, 0f,
-            //                            0f);
-            //    }
-            ////for (int i = 0; i < Main.maxPlayers; i++)
-            ////{
-            ////    Main.player[i].hostile = true;
-            ////    NetMessage.SendData((int)PacketTypes.TogglePvp, -1, -1, "", player.Index, 0f, 0f,
-            ////                        0f);
-            ////}
-            //    TSPlayer.All.SendInfoMessage(string.Format("{0} has turned on everyone's PvP!", args.Player.Name));
-            //}
-            //else if (plStr == "alloff" || plStr == "*off")
-            //{
-            //    //for (int i = 0; i < Main.maxPlayers; i++)
-            //    //{
-            //    //    Main.player[i].hostile = false;
-            //    //    NetMessage.SendData((int)PacketTypes.TogglePvp, -1, -1, "", player.Index, 0f, 0f,
-            //    //                        0f);
-            //    //}
-            //    foreach (Player pl in PvPToggle.PvPplayer)
-            //    {
-            //            pl.PvPType = "";
-            //        //Main.player[pl.Index].hostile = false;
-            //        //NetMessage.SendData((int)PacketTypes.TogglePvp, -1, -1, "", player.Index, 0f, 0f,
-            //        //                    0f);
-            //    }
-            //    TSPlayer.All.SendInfoMessage(string.Format("{0} has stopped forcing your PvP on. You can now turn it off", args.Player.Name));
-            //    return;
-            //}
 
             else
             {
@@ -211,7 +175,7 @@ namespace PvPToggle
                     }
                 }
             }
-            
+
         }
 
         #endregion
@@ -239,7 +203,7 @@ namespace PvPToggle
                 return;
             }
             else if (players.Count > 1
-                && (plStr != "*" && (plStr != "all")))
+                && ((plStr != "*") && (plStr != "all") && (plStr != "*off") && (plStr != "alloff")))
             {
                 args.Player.SendErrorMessage("More than one player matched that name");
             }
@@ -250,14 +214,7 @@ namespace PvPToggle
                 {
                     pl.PvPType = "forceon";
                 }
-
-                //for (int i = 0; i < Main.maxPlayers; i++)
-                //{
-                //    Main.player[i].hostile = true;
-                //    NetMessage.SendData((int)PacketTypes.TogglePvp, -1, -1, "", player.Index, 0f, 0f, 0f);
-                //}
                 TSPlayer.All.SendInfoMessage(string.Format("{0} has forced on everyone's PvP", args.Player.Name));
-                //PvPType = "forced";
                 return;
             }
             else if (plStr == "*off" || plStr == "alloff")
@@ -300,53 +257,10 @@ namespace PvPToggle
                     }
                 }
             }
-
-
-            //if (plStr == "*" || plStr == "all")
-            //{
-            //    for (int i = 0; i < Main.maxPlayers; i++)
-            //    {
-            //        Main.player[i].hostile = true;
-            //        NetMessage.SendData((int)PacketTypes.TogglePvp, -1, -1, "", player.Index, 0f, 0f, 0f);
-            //    }
-            //    TSPlayer.All.SendInfoMessage(string.Format("{0} has forced on everyone's PvP", args.Player.Name));
-            //    PvPType = "forced";
-            //    return;
-            //}
-        }
-#endregion
-
-        #region Test
-        public void Test(CommandArgs args)
-        {
-            var ply = TShock.Utils.FindPlayer(args.Parameters[0]);
-            var player = ply[0];
-            var plyr = Tools.GetPlayerByIndex(ply[0].Index);
-
-
-            if (args.Parameters.Count == 0)
-            {
-                args.Player.SendErrorMessage("Not enough parameters in command");
-            }
-            else
-            {
-                if (ply.Count > 1 || ply.Count < 1)
-                {
-                    args.Player.SendErrorMessage("More than one, or no players matched that name.");
-                }
-                else
-                {
-                    args.Player.SendInfoMessage(string.Format("{0} has PvP type {1}", player.Name, playerv2.PvPType));
-                    args.Player.SendInfoMessage(string.Format("The current server-wide PvP type is {0}", PvPType));
-                    args.Player.SendInfoMessage(string.Format("Number of people not forced on: {0}", PvPFOff));
-                    args.Player.SendInfoMessage(string.Format("Number of players forced on: {0}", PvPFOn));
-                }
-            }
         }
     }
-        #endregion
+#endregion
     
-
     public class Tools
     {
         public static Player GetPlayerByIndex(int index)
