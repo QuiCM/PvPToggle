@@ -25,6 +25,8 @@ namespace PvPToggle
         public static Player playerv2 { get; set; }
         public static int PvPFOn { get; set; }
         public static int PvPFOff { get; set; }
+        public static int PvPBloodmoon { get; set; }
+        public static bool EnableBloodMoon = false;
 
         public override Version Version
         {
@@ -74,6 +76,7 @@ namespace PvPToggle
         {
             Commands.ChatCommands.Add(new Command("pvpswitch", TogglePvP, "pvp", "togglepvp"));
             Commands.ChatCommands.Add(new Command("pvpforce", ForceToggle, "forcepvp", "fpvp"));
+            Commands.ChatCommands.Add(new Command("pvpbmoon", BloodToggle, "bloodmoonpvp", "bmpvp"));
         }
 
         public void OnGreetPlayer(int who, HandledEventArgs e)
@@ -82,12 +85,14 @@ namespace PvPToggle
                 PvPplayer.Add(new Player(who));
         }
 
+        #region OnUpdate
         public void OnUpdate()
         {
             lock (PvPToggle.PvPplayer)
             {
                 int On = 0;
                 int Off = 0;
+                int bloodmoon = 0;
 
                 foreach (Player player in PvPToggle.PvPplayer)
                 {
@@ -108,9 +113,45 @@ namespace PvPToggle
                             player.TSPlayer.SendWarningMessage("Your PvP has been forced on, don't try and turn it off!");
                         }
                     }
+                    else if (player.PvPType == "bloodmoon")
+                    {
+                        if (Main.bloodMoon && !Main.dayTime)
+                        {
+
+                            bloodmoon++;
+                            PvPBloodmoon = bloodmoon;
+                            if (Main.player[player.Index].hostile == false)
+                            {
+                                Main.player[player.Index].hostile = true;
+                                NetMessage.SendData((int)PacketTypes.TogglePvp, -1, -1, "", player.Index, 0f, 0f,
+                                                0f);
+                                player.TSPlayer.SendWarningMessage("The blood moon's evil influence stops your PvP from turning off.");
+                            }
+                        }
+                        else
+                        {
+                            player.PvPType = "";
+                            player.TSPlayer.SendInfoMessage("The blood moon fades, and you have control over your PvP again!");
+                        }
+                    }
+                }
+            }
+
+            if (Main.bloodMoon && EnableBloodMoon)
+            {
+                foreach (Player ply in PvPToggle.PvPplayer)
+                {
+                    ply.PvPType = "bloodmoon";
+                    if (Main.player[ply.Index].hostile == false)
+                    {
+                        Main.player[ply.Index].hostile = true;
+                        NetMessage.SendData((int)PacketTypes.TogglePvp, -1, -1, "", ply.Index, 0f, 0f, 0f);
+                    }
+                    ply.TSPlayer.SendInfoMessage("Your PvP has been forced on for the blood moon!");
                 }
             }
         }
+        #endregion
 
         public void OnLeave(int ply)
         {
@@ -178,6 +219,27 @@ namespace PvPToggle
 
         }
 
+        #endregion
+
+        #region BloodToggle
+        public void BloodToggle(CommandArgs args)
+        {
+            if (args.Parameters.Count != 0)
+            {
+                args.Player.SendErrorMessage("Usage: /bloodmoonpvp");
+                return;
+            }
+            if (EnableBloodMoon == false)
+            {
+                EnableBloodMoon = true;
+                args.Player.SendInfoMessage("Forced PvP during bloodmoons is now activated!");
+            }
+            else if (EnableBloodMoon)
+            {
+                EnableBloodMoon = false;
+                args.Player.SendInfoMessage("Forced PvP during bloodmoons is now deactivated!");
+            }
+        }
         #endregion
 
         #region ForceToggle
@@ -260,7 +322,8 @@ namespace PvPToggle
         }
     }
 #endregion
-    
+
+
     public class Tools
     {
         public static Player GetPlayerByIndex(int index)
