@@ -1,16 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
-using Terraria;
-using Hooks;
-using TShockAPI;
-using TShockAPI.DB;
 using System.ComponentModel;
 using System.IO;
 using System.Net;
 using System.Threading;
 using System.Text;
 using System.Linq;
+using Terraria;
+using TshockAPI;
 
 namespace PvPToggle
 {
@@ -173,15 +171,10 @@ namespace PvPToggle
             {
                 args.Player.SendErrorMessage("You used too many parameters! Try /pvp \"player's name\"!");
             }
-            else if (args.Parameters.Count < 1)
-            {
-                args.Player.SendErrorMessage("You don't have enough parameters! Try /pvp \"player's name\"!");
-                return;
-            }
-
             string plStr = String.Join(" ", args.Parameters);
 
             var ply = TShock.Utils.FindPlayer(plStr);
+
             if (ply.Count < 1)
             {
                 args.Player.SendErrorMessage("No players matched that name!");
