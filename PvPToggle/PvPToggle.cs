@@ -1,14 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
+using Terraria;
+using Hooks;
+using TShockAPI;
+using TShockAPI.DB;
 using System.ComponentModel;
 using System.IO;
 using System.Net;
 using System.Threading;
 using System.Text;
 using System.Linq;
-using Terraria;
-using TshockAPI;
 
 namespace PvPToggle
 {
@@ -72,7 +74,8 @@ namespace PvPToggle
 
         public void OnInitialize()
         {
-            Commands.ChatCommands.Add(new Command("pvpswitch", TogglePvP, "pvp", "togglepvp"));
+            Commands.ChatCommands.Add(new Command(PvPSwitch, "pvp"));
+            Commands.ChatCommands.Add(new Command("pvpswitch", TogglePvP, "tpvp"));
             Commands.ChatCommands.Add(new Command("pvpforce", ForceToggle, "forcepvp", "fpvp"));
             Commands.ChatCommands.Add(new Command("pvpbmoon", BloodToggle, "bloodmoonpvp", "bmpvp"));
         }
@@ -161,6 +164,30 @@ namespace PvPToggle
             }
         }
 
+        public void PvPSwitch(CommandArgs args)
+        {
+            if (args.Parameters.Count != 0)
+            {
+                args.Player.SendErrorMessage("You used too many parameters! Try /pvp");
+            }
+            else
+            {
+                if (!Main.player[args.Player.Index].hostile)
+                {
+                    Main.player[args.Player.Index].hostile = true;
+                    NetMessage.SendData((int)PacketTypes.TogglePvp, -1, -1, "", player.Index, 0f, 0f,
+                                        0f);
+                    args.Player.SendInfoMessage("Your PvP is now enabled.");
+                }
+                else if (Main.player[args.Player.Index].hostile)
+                {
+                    Main.player[args.Player.Index].hostile = false;
+                    NetMessage.SendData((int)PacketTypes.TogglePvp, -1, -1, "", player.Index, 0f, 0f,
+                                        0f);
+                    args.Player.SendInfoMessage("Your PvP is now disabled.");
+                }
+            }
+        }
 
         #region TogglePvP
         public void TogglePvP(CommandArgs args)
@@ -171,10 +198,27 @@ namespace PvPToggle
             {
                 args.Player.SendErrorMessage("You used too many parameters! Try /pvp \"player's name\"!");
             }
+            else if (args.Parameters.Count == 0)
+            {
+                if (!Main.player[args.Player.Index].hostile)
+                {
+                    Main.player[args.Player.Index].hostile = true;
+                    NetMessage.SendData((int)PacketTypes.TogglePvp, -1, -1, "", player.Index, 0f, 0f,
+                                        0f);
+                    args.Player.SendInfoMessage("Your PvP is now enabled.");
+                }
+                else if (Main.player[args.Player.Index].hostile)
+                {
+                    Main.player[args.Player.Index].hostile = false;
+                    NetMessage.SendData((int)PacketTypes.TogglePvp, -1, -1, "", player.Index, 0f, 0f,
+                                        0f);
+                    args.Player.SendInfoMessage("Your PvP is now disabled.");
+                }
+            }
+
             string plStr = String.Join(" ", args.Parameters);
 
             var ply = TShock.Utils.FindPlayer(plStr);
-
             if (ply.Count < 1)
             {
                 args.Player.SendErrorMessage("No players matched that name!");
@@ -314,7 +358,7 @@ namespace PvPToggle
             }
         }
     }
-#endregion
+        #endregion
 
 
     public class Tools
