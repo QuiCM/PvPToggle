@@ -74,7 +74,7 @@ namespace PvPToggle
 
         public void OnInitialize()
         {
-            Commands.ChatCommands.Add(new Command(PvPSwitch, "pvp"));
+            Commands.ChatCommands.Add(new Command("", PvPSwitch, "pvp"));
             Commands.ChatCommands.Add(new Command("pvpswitch", TogglePvP, "tpvp"));
             Commands.ChatCommands.Add(new Command("pvpforce", ForceToggle, "forcepvp", "fpvp"));
             Commands.ChatCommands.Add(new Command("pvpbmoon", BloodToggle, "bloodmoonpvp", "bmpvp"));
@@ -168,21 +168,22 @@ namespace PvPToggle
         {
             if (args.Parameters.Count != 0)
             {
-                args.Player.SendErrorMessage("You used too many parameters! Try /pvp");
+                args.Player.SendErrorMessage("Invalid Syntax. Try /pvp");
+                return;
             }
             else
             {
                 if (!Main.player[args.Player.Index].hostile)
                 {
                     Main.player[args.Player.Index].hostile = true;
-                    NetMessage.SendData((int)PacketTypes.TogglePvp, -1, -1, "", player.Index, 0f, 0f,
+                    NetMessage.SendData((int)PacketTypes.TogglePvp, -1, -1, "", args.Player.Index, 0f, 0f,
                                         0f);
                     args.Player.SendInfoMessage("Your PvP is now enabled.");
                 }
                 else if (Main.player[args.Player.Index].hostile)
                 {
                     Main.player[args.Player.Index].hostile = false;
-                    NetMessage.SendData((int)PacketTypes.TogglePvp, -1, -1, "", player.Index, 0f, 0f,
+                    NetMessage.SendData((int)PacketTypes.TogglePvp, -1, -1, "", args.Player.Index, 0f, 0f,
                                         0f);
                     args.Player.SendInfoMessage("Your PvP is now disabled.");
                 }
@@ -194,26 +195,9 @@ namespace PvPToggle
         {
             var playerv2 = Tools.GetPlayerByIndex(args.Player.Index);
 
-            if (args.Parameters.Count > 1)
+            if (args.Parameters.Count != 1)
             {
                 args.Player.SendErrorMessage("You used too many parameters! Try /pvp \"player's name\"!");
-            }
-            else if (args.Parameters.Count == 0)
-            {
-                if (!Main.player[args.Player.Index].hostile)
-                {
-                    Main.player[args.Player.Index].hostile = true;
-                    NetMessage.SendData((int)PacketTypes.TogglePvp, -1, -1, "", player.Index, 0f, 0f,
-                                        0f);
-                    args.Player.SendInfoMessage("Your PvP is now enabled.");
-                }
-                else if (Main.player[args.Player.Index].hostile)
-                {
-                    Main.player[args.Player.Index].hostile = false;
-                    NetMessage.SendData((int)PacketTypes.TogglePvp, -1, -1, "", player.Index, 0f, 0f,
-                                        0f);
-                    args.Player.SendInfoMessage("Your PvP is now disabled.");
-                }
             }
 
             string plStr = String.Join(" ", args.Parameters);
@@ -282,12 +266,7 @@ namespace PvPToggle
         #region ForceToggle
         public void ForceToggle(CommandArgs args)
         {
-            if (args.Parameters.Count > 1)
-            {
-                args.Player.SendErrorMessage("Incorrect syntax. Use /fpvp \"player's name\" or *");
-                return;
-            }
-            else if (args.Parameters.Count < 1)
+            if (args.Parameters.Count != 1)
             {
                 args.Player.SendErrorMessage("Incorrect syntax. Use /fpvp \"player's name\" or *");
                 return;
