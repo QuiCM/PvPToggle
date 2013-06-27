@@ -74,7 +74,7 @@ namespace PvPToggle
 
         public void OnInitialize()
         {
-            Commands.ChatCommands.Add(new Command("", PvPSwitch, "pvp"));
+            Commands.ChatCommands.Add(new Command(PvPSwitch, "pvp"));
             Commands.ChatCommands.Add(new Command("pvpswitch", TogglePvP, "tpvp"));
             Commands.ChatCommands.Add(new Command("pvpforce", ForceToggle, "forcepvp", "fpvp"));
             Commands.ChatCommands.Add(new Command("pvpbmoon", BloodToggle, "bloodmoonpvp", "bmpvp"));
