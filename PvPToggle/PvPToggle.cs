@@ -2,7 +2,8 @@
 using System.Collections.Generic;
 using System.Reflection;
 using Terraria;
-using Hooks;
+using TerrariaApi;
+using TerrariaApi.Server;
 using TShockAPI;
 using TShockAPI.DB;
 using System.ComponentModel;
@@ -11,22 +12,16 @@ using System.Net;
 using System.Threading;
 using System.Text;
 using System.Linq;
+using Newtonsoft.Json;
 
 namespace PvPToggle
 {
-    [APIVersion(1, 12)]
+    [ApiVersion(1, 14)]
     public class PvPToggle : TerrariaPlugin
     {
         public static List<Player> PvPplayer = new List<Player>();
-        public static string PvPType { get; set; }
-        public static TSPlayer playerv3 { get; set; }
-        public static TSPlayer player { get; set; }
-        public static string playerv4 { get; set; }
-        public static Player playerv2 { get; set; }
-        public static int PvPFOn { get; set; }
-        public static int PvPFOff { get; set; }
-        public static int PvPBloodmoon { get; set; }
-        public static bool EnableBloodMoon = false;
+        public static string savepath { get { return Path.Combine(TShock.SavePath, "PvpTog.json"); } }
+        public static PvPConfig Config { get; set; }
 
         public override Version Version
         {
@@ -48,20 +43,26 @@ namespace PvPToggle
 
         public override void Initialize()
         {
-            GameHooks.Update += OnUpdate;
-            NetHooks.GreetPlayer += OnGreetPlayer;
-            GameHooks.Initialize += OnInitialize;
-            ServerHooks.Leave += OnLeave;
+            var Hook = ServerApi.Hooks;
+
+            Hook.GameUpdate.Register(this, (args) => { OnUpdate(); });
+            Hook.NetGreetPlayer.Register(this, OnGreetPlayer);
+            Hook.GameInitialize.Register(this, (args) => { OnInitialize(); });
+            Hook.ServerLeave.Register(this, OnLeave);
+
+            Config = new PvPConfig();
         }
 
         protected override void Dispose(bool disposing)
         {
             if (disposing)
             {
-                GameHooks.Update -= OnUpdate;
-                NetHooks.GreetPlayer -= OnGreetPlayer;
-                GameHooks.Initialize -= OnInitialize;
-                ServerHooks.Leave -= OnLeave;
+                var Hook = ServerApi.Hooks;
+
+                Hook.GameUpdate.Deregister(this, (args) => { OnUpdate(); });
+                Hook.NetGreetPlayer.Deregister(this, OnGreetPlayer);
+                Hook.GameInitialize.Deregister(this, (args) => { OnInitialize(); });
+                Hook.ServerLeave.Deregister(this, OnLeave);
             }
             base.Dispose(disposing);
         }
@@ -78,12 +79,14 @@ namespace PvPToggle
             Commands.ChatCommands.Add(new Command("pvpswitch", TogglePvP, "tpvp"));
             Commands.ChatCommands.Add(new Command("pvpforce", ForceToggle, "forcepvp", "fpvp"));
             Commands.ChatCommands.Add(new Command("pvpbmoon", BloodToggle, "bloodmoonpvp", "bmpvp"));
+
+            SetUpConfig();
         }
 
-        public void OnGreetPlayer(int who, HandledEventArgs e)
+        public void OnGreetPlayer(GreetPlayerEventArgs args)
         {
             lock (PvPplayer)
-                PvPplayer.Add(new Player(who));
+                PvPplayer.Add(new Player(args.Who));
         }
 
         #region OnUpdate
@@ -91,21 +94,10 @@ namespace PvPToggle
         {
             lock (PvPToggle.PvPplayer)
             {
-                int On = 0;
-                int Off = 0;
-                int bloodmoon = 0;
-
                 foreach (Player player in PvPToggle.PvPplayer)
                 {
-                    if (player.PvPType == "")
+                    if (player.PvPType == "forceon")
                     {
-                        Off++;
-                        PvPFOff = Off;
-                    }
-                    else if (player.PvPType == "forceon")
-                    {
-                        On++;
-                        PvPFOn = On;
                         if (Main.player[player.Index].hostile == false)
                         {
                             Main.player[player.Index].hostile = true;
@@ -118,9 +110,6 @@ namespace PvPToggle
                     {
                         if (Main.bloodMoon && !Main.dayTime)
                         {
-
-                            bloodmoon++;
-                            PvPBloodmoon = bloodmoon;
                             if (Main.player[player.Index].hostile == false)
                             {
                                 Main.player[player.Index].hostile = true;
@@ -138,32 +127,53 @@ namespace PvPToggle
                 }
             }
 
-            if (Main.bloodMoon && EnableBloodMoon)
+            if (Main.bloodMoon && Config.ForcePvPOnBloodMoon)
             {
                 foreach (Player ply in PvPToggle.PvPplayer)
                 {
-                    ply.PvPType = "bloodmoon";
-                    if (Main.player[ply.Index].hostile == false)
+                    if (ply.PvPType != "bloodmoon")
                     {
-                        Main.player[ply.Index].hostile = true;
-                        NetMessage.SendData((int)PacketTypes.TogglePvp, -1, -1, "", ply.Index, 0f, 0f, 0f);
+                        ply.PvPType = "bloodmoon";
+                        if (Main.player[ply.Index].hostile == false)
+                        {
+                            Main.player[ply.Index].hostile = true;
+                            NetMessage.SendData((int)PacketTypes.TogglePvp, -1, -1, "", ply.Index, 0f, 0f, 0f);
+                        }
+                        ply.TSPlayer.SendInfoMessage("Your PvP has been forced on for the blood moon!");
                     }
-                    ply.TSPlayer.SendInfoMessage("Your PvP has been forced on for the blood moon!");
                 }
             }
         }
         #endregion
 
-        public void OnLeave(int ply)
+        #region Config
+        public void SetUpConfig()
         {
+            try
             {
-                lock (PvPplayer)
+                if (!File.Exists(savepath))
                 {
-                    PvPplayer.RemoveAll(plr => plr.Index == ply);
+                    Config.Write(savepath);
                 }
+                else
+                    PvPConfig.Read(savepath);
+            }
+            catch
+            {
+                Log.ConsoleError("Error in PvpTog.json; Check logs for more details");
+            }
+        }
+        #endregion
+
+        public void OnLeave(LeaveEventArgs args)
+        {
+            lock (PvPplayer)
+            {
+                PvPplayer.RemoveAll(plr => plr.Index == args.Who);
             }
         }
 
+        #region PvPSwitch
         public void PvPSwitch(CommandArgs args)
         {
             if (args.Parameters.Count != 0)
@@ -189,6 +199,7 @@ namespace PvPToggle
                 }
             }
         }
+        #endregion
 
         #region TogglePvP
         public void TogglePvP(CommandArgs args)
@@ -197,7 +208,7 @@ namespace PvPToggle
 
             if (args.Parameters.Count != 1)
             {
-                args.Player.SendErrorMessage("You used too many parameters! Try /pvp \"player's name\"!");
+                args.Player.SendErrorMessage("You used too many parameters! Try /tpvp \"player's name\"!");
             }
 
             string plStr = String.Join(" ", args.Parameters);
@@ -250,16 +261,12 @@ namespace PvPToggle
                 args.Player.SendErrorMessage("Usage: /bloodmoonpvp");
                 return;
             }
-            if (EnableBloodMoon == false)
-            {
-                EnableBloodMoon = true;
-                args.Player.SendInfoMessage("Forced PvP during bloodmoons is now activated!");
-            }
-            else if (EnableBloodMoon)
-            {
-                EnableBloodMoon = false;
-                args.Player.SendInfoMessage("Forced PvP during bloodmoons is now deactivated!");
-            }
+            Config.ForcePvPOnBloodMoon = !Config.ForcePvPOnBloodMoon;
+
+            if (Config.ForcePvPOnBloodMoon)
+                args.Player.SendInfoMessage("Players will now have PvP forced on during bloodmoons");
+            else
+                args.Player.SendInfoMessage("Players will no longer have PvP forced on during bloodmoons");
         }
         #endregion
 
@@ -310,27 +317,25 @@ namespace PvPToggle
                 {
                     var plr = players[0];
 
-                    playerv2 = Tools.GetPlayerByIndex(players[0].Index);
-                    playerv3 = players[0];
-                    playerv4 = players[0].Name;
+                    Player player = Tools.GetPlayerByIndex(players[0].Index);
 
-                    if (playerv2.PvPType == "")
+                    if (player.PvPType == "")
                     {
-                        playerv2.PvPType = "forceon";
+                        player.PvPType = "forceon";
                         Main.player[plr.Index].hostile = true;
                         NetMessage.SendData((int)PacketTypes.TogglePvp, -1, -1, "", plr.Index, 0f, 0f, 0f);
                         plr.SendInfoMessage(string.Format("{0} has forced your PvP on!", args.Player.Name));
-                        args.Player.SendInfoMessage(string.Format("You have forced {0}'s PvP on!", playerv4));
+                        args.Player.SendInfoMessage(string.Format("You have forced {0}'s PvP on!", player.PlayerName));
                     }
 
 
-                    else if (playerv2.PvPType == "forceon")
+                    else if (player.PvPType == "forceon")
                     {
-                        playerv2.PvPType = "";
+                        player.PvPType = "";
                         Main.player[plr.Index].hostile = false;
                         NetMessage.SendData((int)PacketTypes.TogglePvp, -1, -1, "", plr.Index, 0f, 0f, 0f);
                         plr.SendInfoMessage(string.Format("{0} has turned your PvP off!", args.Player.Name));
-                        args.Player.SendInfoMessage(string.Format("You have turned {0}'s PvP off!", playerv4));
+                        args.Player.SendInfoMessage(string.Format("You have turned {0}'s PvP off!", player.PlayerName));
 
                     }
                 }
@@ -339,7 +344,7 @@ namespace PvPToggle
     }
         #endregion
 
-
+    #region Tools
     public class Tools
     {
         public static Player GetPlayerByIndex(int index)
@@ -352,4 +357,51 @@ namespace PvPToggle
             return new Player(-1);
         }
     }
+    #endregion
+
+    #region Config
+    public class PvPConfig
+    {
+        public bool ForcePvPOnBloodMoon = false;
+
+        public static PvPConfig Read(string path)
+        {
+            if (!File.Exists(path))
+                return new PvPConfig();
+            using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read))
+            {
+                return Read(fs);
+            }
+        }
+
+        public static PvPConfig Read(Stream stream)
+        {
+            using (var sr = new StreamReader(stream))
+            {
+                var cf = JsonConvert.DeserializeObject<PvPConfig>(sr.ReadToEnd());
+                if (ConfigRead != null)
+                    ConfigRead(cf);
+                return cf;
+            }
+        }
+
+        public void Write(string path)
+        {
+            using (var fs = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.Write))
+            {
+                Write(fs);
+            }
+        }
+
+        public void Write(Stream stream)
+        {
+            var str = JsonConvert.SerializeObject(this, Formatting.Indented);
+            using (var sw = new StreamWriter(stream))
+            {
+                sw.Write(str);
+            }
+        }
+        public static Action<PvPConfig> ConfigRead;
+    }
+    #endregion
 }
