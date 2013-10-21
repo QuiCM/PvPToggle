@@ -20,6 +20,7 @@ namespace PvPToggle
     public class PvPToggle : TerrariaPlugin
     {
         public static List<Player> PvPplayer = new List<Player>();
+        public static List<string> teamColors = new List<string>() { "white", "red", "green", "blue", "yellow" };
         public static string savepath { get { return Path.Combine(TShock.SavePath, "PvpTog.json"); } }
         public static PvPConfig Config { get; set; }
 
@@ -77,6 +78,8 @@ namespace PvPToggle
         {
             Commands.ChatCommands.Add(new Command(PvPSwitch, "pvp"));
             Commands.ChatCommands.Add(new Command("pvpswitch", TogglePvP, "tpvp"));
+            Commands.ChatCommands.Add(new Command(TeamSwitch, "team"));
+            Commands.ChatCommands.Add(new Command("teamtoggle", ToggleTeam, "tteam"));
             Commands.ChatCommands.Add(new Command("pvpforce", ForceToggle, "forcepvp", "fpvp"));
             Commands.ChatCommands.Add(new Command("pvpbmoon", BloodToggle, "bloodmoonpvp", "bmpvp"));
 
@@ -251,6 +254,61 @@ namespace PvPToggle
 
         }
 
+        #endregion
+
+        #region TeamSwitch
+        public static void TeamSwitch(CommandArgs args)
+        {
+            string team = args.Parameters[0];
+
+            if (args.Parameters.Count > 1)
+            {
+                args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /team [team color]");
+                return;
+            }
+            if (teamColors.Contains(team.ToLower()))
+            {
+                args.Player.SetTeam(teamColors.IndexOf(team));
+                args.Player.SendSuccessMessage("Joined the {0} team!", team);
+            }
+            else
+                args.Player.SendErrorMessage("Invalid team color!");
+        }
+        #endregion
+
+        #region ToggleTeam
+        public static void ToggleTeam(CommandArgs args)
+        {
+            if (args.Parameters.Count < 2 || args.Parameters.Count > 3)
+            {
+                args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /tteam [player] [team color]");
+                return;
+            }
+            var foundplr = TShock.Utils.FindPlayer(args.Parameters[0]);
+            if (foundplr.Count == 0)
+            {
+                args.Player.SendErrorMessage("Invalid player!");
+                return;
+            }
+            else if (foundplr.Count > 1)
+            {
+                TShock.Utils.SendMultipleMatchError(args.Player, foundplr.Select(p => p.Name));
+                return;
+            }
+            else
+            {
+                string team = args.Parameters[1];
+
+                if (teamColors.Contains(team.ToLower()))
+                {
+                    foundplr[0].SetTeam(teamColors.IndexOf(team));
+                    foundplr[0].SendInfoMessage("{0} changed you to the {1} team!", args.Player.Name, team);
+                    args.Player.SendSuccessMessage("Changed {0} to the {1} team!", foundplr[0].Name, team);
+                }
+                else
+                    args.Player.SendErrorMessage("Invalid team color!");
+            }
+        }
         #endregion
 
         #region BloodToggle
