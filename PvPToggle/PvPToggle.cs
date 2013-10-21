@@ -259,13 +259,12 @@ namespace PvPToggle
         #region TeamSwitch
         public static void TeamSwitch(CommandArgs args)
         {
-            string team = args.Parameters[0];
-
-            if (args.Parameters.Count > 1)
+            if (args.Parameters.Count != 1)
             {
                 args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /team [team color]");
                 return;
             }
+            string team = args.Parameters[0];
             if (teamColors.Contains(team.ToLower()))
             {
                 args.Player.SetTeam(teamColors.IndexOf(team));
