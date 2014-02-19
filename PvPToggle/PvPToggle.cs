@@ -16,7 +16,7 @@ using Newtonsoft.Json;
 
 namespace PvPToggle
 {
-    [ApiVersion(1, 14)]
+    [ApiVersion(1, 15)]
     public class PvPToggle : TerrariaPlugin
     {
         public static List<Player> PvPplayer = new List<Player>();
@@ -46,9 +46,9 @@ namespace PvPToggle
         {
             var Hook = ServerApi.Hooks;
 
-            Hook.GameUpdate.Register(this, (args) => { OnUpdate(); });
+            Hook.GameUpdate.Register(this, OnUpdate);
             Hook.NetGreetPlayer.Register(this, OnGreetPlayer);
-            Hook.GameInitialize.Register(this, (args) => { OnInitialize(); });
+            Hook.GameInitialize.Register(this, OnInitialize);
             Hook.ServerLeave.Register(this, OnLeave);
 
             Config = new PvPConfig();
@@ -60,9 +60,9 @@ namespace PvPToggle
             {
                 var Hook = ServerApi.Hooks;
 
-                Hook.GameUpdate.Deregister(this, (args) => { OnUpdate(); });
+                Hook.GameUpdate.Deregister(this, OnUpdate);
                 Hook.NetGreetPlayer.Deregister(this, OnGreetPlayer);
-                Hook.GameInitialize.Deregister(this, (args) => { OnInitialize(); });
+                Hook.GameInitialize.Deregister(this, OnInitialize);
                 Hook.ServerLeave.Deregister(this, OnLeave);
             }
             base.Dispose(disposing);
@@ -74,7 +74,7 @@ namespace PvPToggle
             Order = 1;
         }
 
-        public void OnInitialize()
+        public void OnInitialize(EventArgs e)
         {
             Commands.ChatCommands.Add(new Command(PvPSwitch, "pvp"));
             Commands.ChatCommands.Add(new Command("pvpswitch", TogglePvP, "tpvp"));
@@ -93,7 +93,7 @@ namespace PvPToggle
         }
 
         #region OnUpdate
-        public void OnUpdate()
+        public void OnUpdate(EventArgs e)
         {
             lock (PvPToggle.PvPplayer)
             {
