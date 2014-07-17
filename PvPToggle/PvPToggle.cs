@@ -241,7 +241,9 @@ namespace PvPToggle
 
             if (TeamColors.Contains(team.ToLower()))
             {
-                args.Player.SetTeam(TeamColors.IndexOf(team));
+				args.Player.TPlayer.team = TeamColors.IndexOf(team);
+				NetMessage.SendData((int)PacketTypes.PlayerTeam, -1, -1, "", args.Player.Index);
+				args.Player.SendData(PacketTypes.PlayerTeam, "", args.Player.Index);
                 NetMessage.SendData((int) PacketTypes.PlayerTeam, -1, -1, "", args.Player.Index);
                 args.Player.SendSuccessMessage("Joined the {0} team!", team);
             }
@@ -274,8 +276,10 @@ namespace PvPToggle
             var team = args.Parameters[1];
 
             if (TeamColors.Contains(team.ToLower()))
-            {
-                foundplr[0].SetTeam(TeamColors.IndexOf(team));
+			{
+				foundplr[0].TPlayer.team = TeamColors.IndexOf(team);
+				NetMessage.SendData((int)PacketTypes.PlayerTeam, -1, -1, "", foundplr[0].Index);
+				foundplr[0].SendData(PacketTypes.PlayerTeam, "", foundplr[0].Index);
                 foundplr[0].SendInfoMessage("{0} changed you to the {1} team!", args.Player.Name, team);
                 args.Player.SendSuccessMessage("Changed {0} to the {1} team!", foundplr[0].Name, team);
             }
