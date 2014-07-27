@@ -154,6 +154,12 @@ namespace PvPToggle
 
         private static void PvPSwitch(CommandArgs args)
         {
+            if (TShock.Config.PvPMode == "always" || TShock.Config.PvPMode == "disabled")
+            {
+                args.Player.SendErrorMessage("Command blocked by server configuration");
+                return;
+            }
+
             if (args.Parameters.Count != 0)
             {
                 args.Player.SendErrorMessage("Invalid Syntax. Try /pvp");
