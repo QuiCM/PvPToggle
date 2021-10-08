@@ -156,7 +156,7 @@ namespace PvPToggle
 
         private static void PvPSwitch(CommandArgs args)
         {
-            if (TShock.Config.PvPMode == "always" || TShock.Config.PvPMode == "disabled")
+            if (TShock.Config.Settings.PvPMode == "always" || TShock.Config.Settings.PvPMode == "disabled")
             {
                 args.Player.SendErrorMessage("Command blocked by server configuration");
                 return;
@@ -194,9 +194,9 @@ namespace PvPToggle
                 args.Player.SendErrorMessage("You used too many parameters! Try /tpvp \"player's name\"!");
             }
 
-            var plStr = String.Join(" ", args.Parameters);
+            var plStr = string.Join(" ", args.Parameters);
 
-            var ply = TShock.Utils.FindPlayer(plStr);
+            var ply = TSPlayer.FindByNameOrID(plStr);
             if (ply.Count < 1)
             {
                 args.Player.SendErrorMessage("No players matched that name!");
@@ -269,7 +269,7 @@ namespace PvPToggle
                 args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /tteam [player] [team color]");
                 return;
             }
-            var foundplr = TShock.Utils.FindPlayer(args.Parameters[0]);
+            var foundplr = TSPlayer.FindByNameOrID(args.Parameters[0]);
             if (foundplr.Count == 0)
             {
                 args.Player.SendErrorMessage("Invalid player!");
@@ -277,7 +277,7 @@ namespace PvPToggle
             }
             if (foundplr.Count > 1)
             {
-                TShock.Utils.SendMultipleMatchError(args.Player, foundplr.Select(p => p.Name));
+                args.Player.SendMultipleMatchError(foundplr.Select(p => p.Name));
                 return;
             }
 
@@ -325,7 +325,7 @@ namespace PvPToggle
 
             string plStr = String.Join(" ", args.Parameters);
 
-            var players = TShock.Utils.FindPlayer(plStr);
+            var players = TSPlayer.FindByNameOrID(plStr);
             if (players.Count == 0 && ((plStr != "*") && (plStr != "all") && (plStr != "*off") && (plStr != "alloff")))
             {
                 args.Player.SendErrorMessage("No players matched that name");
