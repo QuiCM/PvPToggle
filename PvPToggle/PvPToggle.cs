@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Reflection;
 using TerrariaApi.Server;
 using TShockAPI;
-using OTAPI;
 using System.IO;
 using System.Linq;
 using Newtonsoft.Json;
